@@ -2,7 +2,7 @@ import streamlit as st
 import requests
 
 # Hugging Face model API endpoint for T5
-T5_API_URL = "https://api-inference.huggingface.co/models/google-t5/t5-small"
+T5_API_URL = "https://huggingface.co/google-t5/t5-small"
 
 def translate_text(text, source_lang, target_lang):
     """
