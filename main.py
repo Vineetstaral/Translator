@@ -1,8 +1,14 @@
 import streamlit as st
 import requests
+from dotenv import load_dotenv
+import os
 
-# Hugging Face model API endpoint for T5
-T5_API_URL = "https://huggingface.co/google-t5/t5-small"
+load_dotenv()
+
+API_KEY = os.getenv("HUGGINGFACE_API_KEY")
+
+T5_API_URL = "https://api-inference.huggingface.co/models/google-t5/t5-small"
+headers = {"Authorization": f"Bearer {API_KEY}"}
 
 def translate_text(text, source_lang, target_lang):
     """
@@ -11,7 +17,7 @@ def translate_text(text, source_lang, target_lang):
     try:
         task = f"translate {source_lang} to {target_lang}: {text}"
         payload = {"inputs": task}
-        response = requests.post(T5_API_URL, json=payload)
+        response = requests.post(T5_API_URL, headers=headers, json=payload)
         response.raise_for_status() 
         translation = response.json()[0]["generated_text"]
         return translation
@@ -19,10 +25,12 @@ def translate_text(text, source_lang, target_lang):
         return f"Error: {e}"
 
 
-st.title(" Real-Time Translation ")
+st.title("Real-Time Translation with T5")
 st.write("Enter text and select the source and target languages for translation:")
 
+
 text = st.text_area("Input Text")
+
 
 source_lang = st.selectbox(
     "Select Source Language",
@@ -42,6 +50,6 @@ if st.button("Translate"):
             st.write(translation)
     else:
         st.warning("Please enter some text to translate.")
-
+        
 st.markdown("---")
 st.markdown("Hello|Hola|Namaste|Konnichiwa")
