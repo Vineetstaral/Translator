@@ -1,67 +1,82 @@
 import streamlit as st
 import requests
+import io
+from PIL import Image
 from dotenv import load_dotenv
 import os
 
-# Load environment variables from .env file
 load_dotenv()
 
-# Fetch the Hugging Face API key from the environment variable
-API_KEY = os.getenv("HUGGINGFACE_API_KEY")
+# Sentiment Analysis
+SENTIMENT_API_URL = "https://api-inference.huggingface.co/models/distilbert-base-uncased-finetuned-sst-2-english"
+SENTIMENT_HEADERS = {"Authorization": f"Bearer {os.getenv('HUGGINGFACE_API_KEY')}"}
 
-# Hugging Face model API endpoint for T5
-T5_API_URL = "https://api-inference.huggingface.co/models/google-t5/t5-small"
-headers = {"Authorization": f"Bearer {API_KEY}"}
+def query_sentiment(payload):
+    response = requests.post(SENTIMENT_API_URL, headers=SENTIMENT_HEADERS, json=payload)
+    return response.json()
 
-def translate_text(text, source_lang, target_lang):
-    """
-    Translate the input text using the T5 model.
-    """
-    try:
-        # Format the input for T5 (e.g., "translate English to French: Hello, how are you?")
-        task = f"translate {source_lang} to {target_lang}: {text}"
-        payload = {"inputs": task}
-        response = requests.post(T5_API_URL, headers=headers, json=payload)
-        response.raise_for_status()  # Raise HTTPError for bad responses (4xx or 5xx)
-        
-        # Debug: Print the API response
-        print("API Response:", response.json())
-        
-        # Extract the translation from the response
-        translation = response.json()[0]["generated_text"]
-        return translation
-    except requests.exceptions.RequestException as e:
-        return f"Error: {e}"
-    except KeyError:
-        return "Error: Unable to parse the API response."
+# Text Summarization
+SUMMARIZATION_API_URL = "https://api-inference.huggingface.co/models/facebook/bart-large-cnn"
+SUMMARIZATION_HEADERS = {"Authorization": f"Bearer {os.getenv('HUGGINGFACE_API_KEY')}"}
 
-# Streamlit app
-st.title("🌍 Real-Time Translation with T5 🈶")
-st.write("Enter text and select the source and target languages for translation:")
+def query_summarization(payload):
+    response = requests.post(SUMMARIZATION_API_URL, headers=SUMMARIZATION_HEADERS, json=payload)
+    return response.json()
 
-# Text input area
-text = st.text_area("Input Text")
+# Question Answering
+QA_API_URL = "https://api-inference.huggingface.co/models/deepset/roberta-base-squad2"
+QA_HEADERS = {"Authorization": f"Bearer {os.getenv('HUGGINGFACE_API_KEY')}"}
 
-# Language selection dropdowns
-source_lang = st.selectbox(
-    "Select Source Language",
-    options=["English", "French", "Spanish", "German", "Chinese"]
-)
+def query_qa(payload):
+    response = requests.post(QA_API_URL, headers=QA_HEADERS, json=payload)
+    return response.json()
 
-target_lang = st.selectbox(
-    "Select Target Language",
-    options=["French", "Spanish", "German", "Chinese", "English"]
-)
+st.title("Hugging Face API Demo")
 
-if st.button("Translate"):
-    if text:
-        with st.spinner('Translating text...'):
-            translation = translate_text(text, source_lang, target_lang)
-            st.write("### Translation")
-            st.write(translation)
+# Sentiment Analysis Section
+st.header("Sentiment Analysis")
+sentiment_text = st.text_area("Enter text for sentiment analysis:")
+if st.button("Analyze Sentiment"):
+    if sentiment_text:
+        with st.spinner("Analyzing sentiment..."):
+            sentiment_result = query_sentiment({"inputs": sentiment_text})
+            if sentiment_result:
+                st.write(f"**Sentiment:** {sentiment_result[0][0]['label']}")
+                st.write(f"**Confidence:** {sentiment_result[0][0]['score']:.4f}")
+            else:
+                st.error("Error analyzing sentiment.")
     else:
-        st.warning("Please enter some text to translate.")
+        st.warning("Please enter text for sentiment analysis.")
 
-        
+# Text Summarization Section
+st.header("Text Summarization")
+summarization_text = st.text_area("Enter text for summarization:")
+if st.button("Summarize"):
+    if summarization_text:
+        with st.spinner("Summarizing text..."):
+            summarization_result = query_summarization({"inputs": summarization_text})
+            if summarization_result and "summary_text" in summarization_result[0]:
+                st.write(f"**Summary:** {summarization_result[0]['summary_text']}")
+            else:
+                st.error("Error summarizing text.")
+    else:
+        st.warning("Please enter text for summarization.")
+
+# Question Answering Section
+st.header("Question Answering")
+qa_context = st.text_area("Enter context for question answering:")
+qa_question = st.text_input("Enter your question:")
+if st.button("Answer Question"):
+    if qa_context and qa_question:
+        with st.spinner("Answering question..."):
+            qa_result = query_qa({"inputs": {"question": qa_question, "context": qa_context}})
+            if qa_result and "answer" in qa_result:
+                st.write(f"**Answer:** {qa_result['answer']}")
+                st.write(f"**Score:** {qa_result['score']:.4f}")
+            else:
+                st.error("Error answering question.")
+    else:
+        st.warning("Please enter context and question.")
+
 st.markdown("---")
-st.markdown("Hello|Hola|Namaste|Konnichiwa")
+st.markdown("Using Free Hugging Face Models")
